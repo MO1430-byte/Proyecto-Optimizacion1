@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # =========================================================================
-# PLATAFORMA DE OPTIMIZACIÓN WEB - GRUPO VMA OPTIMA (STREAMLIT)
+# PLATAFORMA DE OPTIMIZACIÓN WEB - GRUPO VMA OPTIMA (STREAMLIT + PLOTLY)
 # =========================================================================
 
 st.set_page_config(page_title="Plataforma de Optimización - VMA Optima", layout="wide")
@@ -18,7 +18,6 @@ with st.sidebar:
     n_vars = st.number_input("Número de Variables", min_value=1, max_value=3, value=2)
     metodo = st.selectbox("Método de Optimización", ['Gradiente', 'Gradiente Conjugado (FR)', 'Newton'])
     
-    # Nota: Internamente el código convertirá los "^" a "**" para que funcione como MATLAB
     funcion_str_input = st.text_input("Función Objetivo f(x,y,z)", value="2*x^2 - 4*x*y + y^4 + 5*y^2 - 10*y")
     st.caption("Use: x, y, z (Ej: x^2 + y^2)")
     
@@ -43,7 +42,6 @@ with st.sidebar:
 # --- LÓGICA MATEMÁTICA Y EJECUCIÓN ---
 if ejecutar:
     try:
-        # Pre-procesamiento para admitir sintaxis de MATLAB en Python
         funcion_str = funcion_str_input.replace('^', '**')
         
         x_vals = [float(i) for i in x0_str.split(",")]
@@ -72,7 +70,6 @@ if ejecutar:
         dk_old = None
         g_old = None
         
-        # Bloqueo lógico interno
         if metodo != 'Gradiente':
             tipo_busqueda = 'Wolfe Completo sin Backtracking'
             alpha_0 = 1.0
@@ -167,9 +164,7 @@ if ejecutar:
         
         st.divider()
         
-        # --- GRÁFICOS ---
         # --- GRÁFICOS INTERACTIVOS (PLOTLY) ---
-
         g_col1, g_col2 = st.columns(2)
         
         with g_col1:
@@ -178,22 +173,21 @@ if ejecutar:
             fig_err.add_trace(go.Scatter(
                 x=list(range(len(err_history))), 
                 y=err_history, 
-                mode='lines+markers', 
-                name='Error ||∇f||',
-                line=dict(color='#0066cc', width=2),
-                marker=dict(size=6)
+                mode='lines+markers',
+                marker=dict(size=8, color='#0066cc'),
+                hovertemplate="Iteración: %{x}<br>Error: %{y:.3e}<extra></extra>"
             ))
             fig_err.update_layout(
+                yaxis_type='log',
                 xaxis_title="Número de Iteraciones",
                 yaxis_title="Error log(||∇f||)",
-                yaxis_type="log",
-                margin=dict(l=0, r=0, t=30, b=0),
-                hovermode="x unified"
+                margin=dict(l=20, r=20, t=30, b=20)
             )
-            st.plotly_chart(fig_err, use_container_width=True)
+            # config={'scrollZoom': True} activa el zoom con el trackpad/rueda
+            st.plotly_chart(fig_err, use_container_width=True, config={'scrollZoom': True})
             
         with g_col2:
-            st.subheader("🗺️ Trayectoria Espacial (Interactiva)")
+            st.subheader("🗺️ Trayectoria Realizada")
             if n_vars == 2:
                 history = np.array(history)
                 x_pts, y_pts = history[:, 0], history[:, 1]
@@ -212,53 +206,47 @@ if ejecutar:
                 
                 fig_traj = go.Figure()
                 
-                # Capa 1: Curvas de nivel de fondo
+                # Mapa de curvas de nivel (Fondo)
                 fig_traj.add_trace(go.Contour(
-                    x=x_grid, y=y_grid, z=Z, 
-                    colorscale='Viridis', 
-                    opacity=0.5, 
-                    name='f(x,y)',
-                    hovertemplate='x: %{x:.3f}<br>y: %{y:.3f}<br>f(x,y): %{z:.3f}<extra></extra>'
+                    z=Z, x=x_grid, y=y_grid, 
+                    colorscale='Viridis', opacity=0.6, showscale=False,
+                    hovertemplate="x: %{x:.2f}<br>y: %{y:.2f}<br>f(x,y): %{z:.2f}<extra></extra>"
                 ))
                 
-                # Capa 2: Línea de trayectoria
+                # Línea de trayectoria con puntos
                 fig_traj.add_trace(go.Scatter(
                     x=x_pts, y=y_pts, 
                     mode='lines+markers', 
-                    name='Trayectoria',
+                    marker=dict(color='red', size=8), 
                     line=dict(color='red', width=2),
-                    marker=dict(symbol='circle', size=6, color='red'),
-                    hovertemplate='Punto: (%{x:.4f}, %{y:.4f})<extra></extra>'
+                    name='Trayectoria',
+                    hovertemplate="Punto Iteración<br>x: %{x:.5f}<br>y: %{y:.5f}<extra></extra>"
                 ))
                 
-                # Capa 3: Punto de Inicio
+                # Punto de Inicio
                 fig_traj.add_trace(go.Scatter(
                     x=[history[0,0]], y=[history[0,1]], 
-                    mode='markers', 
-                    name='Inicio',
-                    marker=dict(color='blue', size=12, line=dict(color='white', width=2)),
-                    hovertemplate='Inicio: (%{x:.4f}, %{y:.4f})<extra></extra>'
+                    mode='markers', marker=dict(color='blue', size=12, symbol='circle'), 
+                    name='Inicio'
                 ))
                 
-                # Capa 4: Punto Mínimo Encontrado
+                # Punto Mínimo
                 fig_traj.add_trace(go.Scatter(
                     x=[xk[0]], y=[xk[1]], 
-                    mode='markers', 
-                    name='Mínimo (x*)',
-                    marker=dict(color='green', symbol='star', size=16, line=dict(color='black', width=1)),
-                    hovertemplate='Mínimo: (%{x:.4f}, %{y:.4f})<extra></extra>'
+                    mode='markers', marker=dict(color='#00ff00', size=16, symbol='star', line=dict(color='black', width=1)), 
+                    name='Mínimo'
                 ))
                 
                 fig_traj.update_layout(
                     xaxis_title="Eje X",
                     yaxis_title="Eje Y",
-                    margin=dict(l=0, r=0, t=30, b=0),
-                    legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+                    margin=dict(l=20, r=20, t=30, b=20),
+                    hovermode="closest"
                 )
                 
-                st.plotly_chart(fig_traj, use_container_width=True)
+                st.plotly_chart(fig_traj, use_container_width=True, config={'scrollZoom': True})
             else:
-                st.info("El gráfico de trayectoria espacial interactiva solo está disponible para N=2 variables.")
+                st.info("El gráfico de trayectoria espacial solo está disponible para N=2 variables.")
 
     except Exception as e:
         st.error(f"Ocurrió un error matemático o de sintaxis: {str(e)}")
