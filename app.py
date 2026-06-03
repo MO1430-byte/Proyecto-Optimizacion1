@@ -9,6 +9,9 @@ import plotly.graph_objects as go
  # =========================================================================
  # PLATAFORMA DE OPTIMIZACIÓN WEB - GRUPO VMA OPTIMA (STREAMLIT)
  # =========================================================================
+
+# Configuración de página en modo ancho para aprovechar la pantalla completa
+st.set_page_config(layout="wide")
  
 st.markdown("""
 <style>
@@ -23,17 +26,50 @@ h1, h2, h3 {
     color: #d4af37 !important;
 }
 
-/* Texto normal */
+/* Texto normal y etiquetas */
 p, label {
     color: white !important;
 }
 
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background-color: #06152d;
+/* CONFIGURACIÓN DE LAS PESTAÑAS PARA QUE ACTÚEN COMO GRANDES BOTONES */
+button[data-baseweb="tab"] {
+    background-color: #10284d !important;
+    color: white !important;
+    border: 2px solid #d4af37 !important;
+    border-radius: 10px 10px 0px 0px;
+    padding: 12px 24px !important;
+    font-size: 16px !important;
+    font-weight: bold !important;
+    margin-right: 8px !important;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
 }
 
-/* Inputs (Cajas de texto y números) - Corregido para legibilidad total al escribir */
+/* Botón/Pestaña Seleccionada (Activa) */
+button[data-baseweb="tab"][aria-selected="true"] {
+    background-color: #d4af37 !important;
+    color: #081c3a !important;
+    border-color: #d4af37 !important;
+}
+
+/* Efecto Hover al pasar el mouse por los botones/pestañas */
+button[data-baseweb="tab"]:hover {
+    background-color: #f0c94a !important;
+    color: #081c3a !important;
+    cursor: pointer;
+}
+
+/* El recuadro o "pestañita" contenedora de los datos de entrada */
+div[data-testid="stTabPanel"] {
+    background-color: #06152d !important;
+    border: 2px solid #d4af37 !important;
+    border-radius: 0px 10px 10px 10px;
+    padding: 25px !important;
+    margin-top: -2px !important;
+    margin-bottom: 25px !important;
+}
+
+/* Inputs (Cajas de texto y números) - Alta legibilidad */
 .stTextInput input,
 .stNumberInput input {
     background-color: #10284d !important;
@@ -42,7 +78,7 @@ p, label {
     border-radius: 8px;
 }
 
-/* Forzar que el texto y fondo se mantengan legibles al hacer clic o escribir (Focus) */
+/* Foco en inputs al escribir */
 .stTextInput input:focus,
 .stNumberInput input:focus {
     background-color: #10284d !important;
@@ -61,13 +97,14 @@ p, label {
     background-color: #10284d;
 }
 
-/* Botón principal */
+/* Botón principal de Ejecutar */
 .stButton button {
     background-color: #d4af37;
     color: #081c3a;
     font-weight: bold;
     border-radius: 10px;
     border: none;
+    padding: 10px 20px;
 }
 
 .stButton button:hover {
@@ -82,7 +119,7 @@ p, label {
     border-radius: 10px;
 }
 
-/* Selectbox cerrado y abierto - Corrección de Contraste */
+/* Selectbox corrección de contraste */
 [data-baseweb="select"] span {
     color: white !important;
 }
@@ -91,18 +128,15 @@ div[data-baseweb="select"] * {
     color: white !important;
 }
 
-/* Menú desplegable completo */
 ul[role="listbox"] {
     background-color: #10284d !important;
 }
 
-/* Opciones dentro del menú desplegable */
 li[role="option"] {
     color: white !important;
     background-color: #10284d !important;
 }
 
-/* Efecto hover al pasar el mouse sobre las opciones */
 li[role="option"]:hover {
     background-color: #d4af37 !important;
     color: #081c3a !important;
@@ -110,117 +144,25 @@ li[role="option"]:hover {
 
 </style>
 """, unsafe_allow_html=True)
+
 st.title("Plataforma Web de Optimización - Grupo: VMA Optima")
- 
-# --- PANEL LATERAL (DATOS DE ENTRADA) ---
-with st.sidebar:
-    st.header("🔧 Datos de Entrada")
+st.markdown("Selecciona el método de optimización mediante los botones superiores para configurar sus parámetros correspondientes:")
 
-    n_vars = st.number_input(
-        "Número de Variables",
-        min_value=1,
-        max_value=50,
-        value=2,
-        step=1
-    )
-
-    var_names = [f"x{i+1}" for i in range(n_vars)]
-
-    metodo = st.selectbox(
-        "Método de Optimización",
-        ['Gradiente', 'Gradiente Conjugado (FR)', 'Newton']
-    )
-     # Nota: Internamente el código convertirá los "^" a "**" para que funcione como MATLAB
-    default_function = " + ".join(
-    [f"x{i+1}^2" for i in range(min(n_vars,3))]
-    )
-    
-    funcion_str_input = st.text_input(
-        "Función Objetivo",
-        value=default_function
-    )
-    
-    st.caption(
-        f"Variables disponibles: {', '.join(var_names)}"
-    )
-
-    default_x0 = ", ".join(["0"] * n_vars)
-
-    x0_str = st.text_input(
-        "Punto de Partida (x₀)",
-        value=default_x0
-    )
-    max_iter = st.number_input("Número de Iteraciones", min_value=1, value=100)
-    tol = st.number_input("Tolerancia de Convergencia", value=1e-6, format="%.1e")
- 
-    st.markdown("### ⚙️ Parámetros de Búsqueda")
-    
-    # --- MENÚ DINÁMICO ADAPTATIVO SEGÚN EL MÉTODO ---
-    if metodo == 'Gradiente':
-        tipo_busqueda = st.selectbox(
-            "Criterio de Búsqueda", 
-            ['Solo Armijo', 'Wolfe Completo', 'Wolfe Completo sin Backtracking']
-        )
-        alpha_0 = st.number_input("Paso Inicial Alpha (α)", value=1.0)
-        c1 = st.number_input("Parámetro Armijo (β)", value=0.1)
-
-        # Mostrar parámetro Curvatura (c2) solo si es Wolfe
-        if tipo_busqueda in ['Wolfe Completo', 'Wolfe Completo sin Backtracking']:
-            c2 = st.number_input(
-                "Parámetro Curvatura (σ)",
-                min_value=0.01,
-                max_value=0.999,
-                value=0.90,
-                step=0.01,
-                help="Condición de Wolfe. Valores comunes: 0.1 = muy estricto, 0.5 = moderado, 0.9 = estándar, 0.99 = muy permisivo."
-            )
-        else:
-            c2 = 0.90
-
-        # Mostrar parámetro Contracción (rho) solo si incluye Backtracking
-        if tipo_busqueda != 'Wolfe Completo sin Backtracking':
-            rho = st.number_input("Contracción Backtracking (ρ)", value=0.5)
-        else:
-            rho = 0.5
-
-    else:
-        # Interfaz simplificada para Newton y Gradiente Conjugado
-        st.info(f"💡 **Nota:** El método **{metodo}** utiliza una búsqueda de línea de *Wolfe Completo sin Backtracking* con $\\alpha_0 = 1.0$ fijado de manera automática.")
-        
-        # Parámetros lógicos internos ocultos al usuario pero asignados para el algoritmo
-        tipo_busqueda = 'Wolfe Completo sin Backtracking'
-        alpha_0 = 1.0
-        rho = 0.5
-        
-        # Únicos parámetros necesarios de ingresar para estos métodos
-        c1 = st.number_input("Parámetro Armijo (β)", value=0.1)
-        c2 = st.number_input(
-            "Parámetro Curvatura (σ)",
-            min_value=0.01,
-            max_value=0.999,
-            value=0.90,
-            step=0.01,
-            help="Condición de Wolfe. Valores comunes: 0.1 = muy estricto, 0.5 = moderado, 0.9 = estándar, 0.99 = muy permisivo."
-        )
-
-    ejecutar = st.button("🚀 EJECUTAR OPTIMIZACIÓN", use_container_width=True, type="primary")
-
- # --- LÓGICA MATEMÁTICA Y EJECUCIÓN ---
-if ejecutar:
+# --- FUNCIÓN CENTRALIZADA DE CÓMPUTO Y RESOLUCIÓN MATEMÁTICA ---
+def resolver_y_graficar(metodo, n_vars, funcion_str_input, x0_str, max_iter, tol, tipo_busqueda, alpha_0, c1, c2, rho):
     try:
-         # Pre-procesamiento para admitir sintaxis de MATLAB en Python
+        # Pre-procesamiento sintaxis MATLAB
         funcion_str = funcion_str_input.replace('^', '**')
- 
         x_vals = [float(i) for i in x0_str.split(",")]
+        
         if len(x_vals) != n_vars:
-            st.error(f"El punto de partida debe tener {n_vars} valores separados por comas.")
-            st.stop()
+            st.error(f"❌ El punto de partida debe tener exactamente {n_vars} valores separados por comas.")
+            return
+
         xk = np.array(x_vals, dtype=float)
-        vars_sym = tuple(
-            sp.symbols(" ".join(var_names))
-            if n_vars > 1
-            else [sp.Symbol("x1")]
-        )
+        var_names = [f"x{i+1}" for i in range(n_vars)]
+        vars_sym = tuple(sp.symbols(" ".join(var_names)) if n_vars > 1 else [sp.Symbol("x1")])
+        
         f_sym = sp.sympify(funcion_str)
         grad_sym = [sp.diff(f_sym, var) for var in vars_sym]
         hess_sym = [[sp.diff(g, var) for var in vars_sym] for g in grad_sym]
@@ -229,14 +171,9 @@ if ejecutar:
         grad_num = sp.lambdify(vars_sym, grad_sym, "numpy")
         hess_num = sp.lambdify(vars_sym, hess_sym, "numpy")
         
-        def f(v):
-            return float(f_num(*v))
-        
-        def grad(v):
-            return np.array(grad_num(*v), dtype=float)
-        
-        def hess(v):
-            return np.array(hess_num(*v), dtype=float)
+        def f(v): return float(f_num(*v))
+        def grad(v): return np.array(grad_num(*v), dtype=float)
+        def hess(v): return np.array(hess_num(*v), dtype=float)
 
         history = [xk.copy()]
         f_history = [f(xk)]
@@ -244,11 +181,6 @@ if ejecutar:
         status = "Número máximo de iteraciones alcanzado"
         dk_old = None
         g_old = None
-
-        # Sincronización lógica interna redundante de seguridad
-        if metodo != 'Gradiente':
-            tipo_busqueda = 'Wolfe Completo sin Backtracking'
-            alpha_0 = 1.0
 
         for k in range(1, max_iter + 1):
             g = grad(xk)
@@ -336,7 +268,6 @@ if ejecutar:
             "Error ||∇f||": [f"{ev:.6e}" for ev in err_history]
         })
         st.dataframe(df_hist, use_container_width=True)
-
         st.divider()
 
         # --- GRÁFICOS ---
@@ -345,158 +276,164 @@ if ejecutar:
             st.subheader("📉 Gráfico de Convergencia")
             fig_err = go.Figure()
             fig_err.add_trace(go.Scatter(
-                x=list(range(len(err_history))),
-                y=err_history,
-                mode='lines+markers',
-                name='Error',
-                text=[
-                    f"""
-                    Iteración: {i}<br>
-                    xk = {np.round(history[i],5)}<br>
-                    Error = {err_history[i]:.3e}
-                    """
-                    for i in range(len(history))
-                ],
+                x=list(range(len(err_history))), y=err_history,
+                mode='lines+markers', name='Error',
+                text=[f"Iteración: {i}<br>xk = {np.round(history[i],5)}<br>Error = {err_history[i]:.3e}" for i in range(len(history))],
                 hoverinfo='text'
             ))
-
-            fig_err.update_layout(
-                title='Convergencia del Error',
-                xaxis_title='Iteración',
-                yaxis_title='||∇f||',
-                yaxis_type='log',
-                height=450
-            )
-
+            fig_err.update_layout(title='Convergencia del Error', xaxis_title='Iteración', yaxis_title='||∇f||', yaxis_type='log', height=450)
             st.plotly_chart(fig_err, use_container_width=True)
 
         with g_col2:
             st.subheader("🗺️ Trayectoria Realizada")
             if n_vars == 2:
-                
                 history_np = np.array(history)
-                x_pts = history_np[:, 0]
-                y_pts = history_np[:, 1]
-
+                x_pts, y_pts = history_np[:, 0], history_np[:, 1]
                 mx = max(abs(max(x_pts)-min(x_pts))*0.6, 2.0)
                 my = max(abs(max(y_pts)-min(y_pts))*0.6, 2.0)
-               
                 x_grid = np.linspace(min(x_pts)-mx, max(x_pts)+mx, 80)
                 y_grid = np.linspace(min(y_pts)-my, max(y_pts)+my, 80)
-               
                 X, Y = np.meshgrid(x_grid, y_grid)
-                
                 Z = np.zeros_like(X)
-                
                 for r in range(X.shape[0]):
-                    for c in range(X.shape[1]):
-                        Z[r,c] = f([X[r,c], Y[r,c]])
+                    for c in range(X.shape[1]): Z[r,c] = f([X[r,c], Y[r,c]])
                      
                 fig_traj = go.Figure()
-
-                # Curvas de nivel
-                fig_traj.add_trace(go.Contour(
-                    x=x_grid,
-                    y=y_grid,
-                    z=Z,
-                    colorscale='Viridis',
-                    contours=dict(showlabels=False),
-                    opacity=0.6,
-                    showscale=False
-                ))
-
-                # Trayectoria
-                fig_traj.add_trace(go.Scatter(
-                    x=history_np[:,0],
-                    y=history_np[:,1],
-                    mode='lines+markers',
-                    name='Trayectoria',
-                    text=[
-                        f"""
-                        Iteración: {i}<br>
-                        x = {history_np[i,0]:.6f}<br>
-                        y = {history_np[i,1]:.6f}<br>
-                        f(x) = {f_history[i]:.6f}
-                        """
-                        for i in range(len(history_np))
-                    ],
-                   hoverinfo='text'
-                ))
- 
-                # Punto inicial
-                fig_traj.add_trace(go.Scatter(
-                    x=[history_np[0,0]],
-                    y=[history_np[0,1]],
-                    mode='markers',
-                    name='Inicio',
-                    marker=dict(size=12)
-                ))
-
-                # Punto final
-                fig_traj.add_trace(go.Scatter(
-                    x=[xk[0]],
-                    y=[xk[1]],
-                    mode='markers',
-                    name='Mínimo',
-                    marker=dict(size=14)
-               ))
-
-                fig_traj.update_layout(
-                    title='Trayectoria del Método',
-                    xaxis_title='X',
-                    yaxis_title='Y',
-                    height=500
-                )
-
+                fig_traj.add_trace(go.Contour(x=x_grid, y=y_grid, z=Z, colorscale='Viridis', contours=dict(showlabels=False), opacity=0.6, showscale=False))
+                fig_traj.add_trace(go.Scatter(x=history_np[:,0], y=history_np[:,1], mode='lines+markers', name='Trayectoria', text=[f"Iteración: {i}<br>x = {history_np[i,0]:.6f}<br>y = {history_np[i,1]:.6f}<br>f(x) = {f_history[i]:.6f}" for i in range(len(history_np))], hoverinfo='text'))
+                fig_traj.add_trace(go.Scatter(x=[history_np[0,0]], y=[history_np[0,1]], mode='markers', name='Inicio', marker=dict(size=12)))
+                fig_traj.add_trace(go.Scatter(x=[xk[0]], y=[xk[1]], mode='markers', name='Mínimo', marker=dict(size=14)))
+                fig_traj.update_layout(title='Trayectoria del Método', xaxis_title='X', yaxis_title='Y', height=500)
                 st.plotly_chart(fig_traj, use_container_width=True)
             elif n_vars == 1:
-
                 history_np = np.array(history).flatten()
-            
-                x_min = min(history_np) - 2
-                x_max = max(history_np) + 2
-            
+                x_min, x_max = min(history_np) - 2, max(history_np) + 2
                 x_curve = np.linspace(x_min, x_max, 400)
                 y_curve = [f([x]) for x in x_curve]
-            
                 fig_1d = go.Figure()
-            
-                # Curva de la función
-                fig_1d.add_trace(go.Scatter(
-                    x=x_curve,
-                    y=y_curve,
-                    mode='lines',
-                    name='f(x)'
-                ))
-            
-                # Puntos iterativos
-                fig_1d.add_trace(go.Scatter(
-                    x=history_np,
-                    y=[f([x]) for x in history_np],
-                    mode='markers+lines',
-                    name='Iteraciones',
-                    text=[
-                        f"""
-                        Iteración: {i}<br>
-                        x = {history_np[i]:.6f}<br>
-                        f(x) = {f([history_np[i]]):.6f}
-                        """
-                        for i in range(len(history_np))
-                    ],
-                    hoverinfo='text'
-                ))
-            
-                fig_1d.update_layout(
-                    title='Trayectoria de Optimización en 1D',
-                    xaxis_title='x',
-                    yaxis_title='f(x)',
-                    height=500
-                )
-            
+                fig_1d.add_trace(go.Scatter(x=x_curve, y=y_curve, mode='lines', name='f(x)'))
+                fig_1d.add_trace(go.Scatter(x=history_np, y=[f([x]) for x in history_np], mode='markers+lines', name='Iteraciones', text=[f"Iteración: {i}<br>x = {history_np[i]:.6f}<br>f(x) = {f([history_np[i]]):.6f}" for i in range(len(history_np))], hoverinfo='text'))
+                fig_1d.update_layout(title='Trayectoria de Optimización en 1D', xaxis_title='x', yaxis_title='f(x)', height=500)
                 st.plotly_chart(fig_1d, use_container_width=True)
-            
             else:
-                st.info("La visualización gráfica solo está disponible para 1 o 2 variables.")
-
+                st.info("ℹ️ La visualización gráfica de trayectoria solo está disponible para problemas de 1 o 2 variables.")
     except Exception as e:
-        st.error(f"Ocurrió un error matemático o de sintaxis: {str(e)}")
+        st.error(f"❌ Ocurrió un error matemático o de sintaxis: {str(e)}")
+
+# --- CREACIÓN DE LOS TRES GRANDES BOTONES DE PESTAÑA ---
+tab_gradiente, tab_conjugado, tab_newton = st.tabs([
+    "📈 Método del Gradiente", 
+    "🚀 Gradiente Conjugado (FR)", 
+    "🧮 Método de Newton"
+])
+
+# =========================================================================
+# PESTAÑA 1: MÉTODO DEL GRADIENTE
+# =========================================================================
+with tab_gradiente:
+    st.subheader("🔧 Configuración - Descenso de Gradiente Estándar")
+    
+    c_grad1, c_grad2 = st.columns(2)
+    with c_grad1:
+        n_vars_g = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_g")
+        var_names_g = [f"x{i+1}" for i in range(n_vars_g)]
+        default_function_g = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_g,3))])
+        funcion_str_g = st.text_input("Función Objetivo", value=default_function_g, key="func_g")
+        st.caption(f"Variables disponibles: {', '.join(var_names_g)}")
+        
+        default_x0_g = ", ".join(["0"] * n_vars_g)
+        x0_str_g = st.text_input("Punto de Partida (x₀)", value=default_x0_g, key="x0_g")
+        
+    with c_grad2:
+        max_iter_g = st.number_input("Número de Iteraciones", min_value=1, value=100, key="max_iter_g")
+        tol_g = st.number_input("Tolerancia de Convergencia", value=1e-6, format="%.1e", key="tol_g")
+        tipo_busqueda_g = st.selectbox("Criterio de Búsqueda de Línea", ['Solo Armijo', 'Wolfe Completo', 'Wolfe Completo sin Backtracking'], key="busqueda_g")
+
+    st.markdown("#### ⚙️ Parámetros Algorítmicos")
+    p_grad1, p_grad2, p_grad3 = st.columns(3)
+    with p_grad1:
+        alpha_0_g = st.number_input("Paso Inicial Alpha (α)", value=1.0, key="alpha_0_g")
+    with p_grad2:
+        c1_g = st.number_input("Parámetro Armijo (β)", value=0.1, key="c1_g")
+    with p_grad3:
+        # Lógica condicional adaptativa para Curvatura (σ)
+        if tipo_busqueda_g in ['Wolfe Completo', 'Wolfe Completo sin Backtracking']:
+            c2_g = st.number_input("Parámetro Curvatura (σ)", min_value=0.01, max_value=0.999, value=0.90, step=0.01, help="Condición de Wolfe. Valores comunes: 0.1 = muy estricto, 0.5 = moderado, 0.9 = estándar, 0.99 = muy permisivo.", key="c2_g")
+        else:
+            c2_g = 0.90
+            
+        # Lógica condicional adaptativa para Contracción (ρ)
+        if tipo_busqueda_g != 'Wolfe Completo sin Backtracking':
+            rho_g = st.number_input("Contracción Backtracking (ρ)", value=0.5, key="rho_g")
+        else:
+            rho_g = 0.5
+
+    ejecutar_g = st.button("🚀 EJECUTAR OPTIMIZACIÓN - GRADIENTE", use_container_width=True, key="btn_ej_g")
+    if ejecutar_g:
+        resolver_y_graficar('Gradiente', n_vars_g, funcion_str_g, x0_str_g, max_iter_g, tol_g, tipo_busqueda_g, alpha_0_g, c1_g, c2_g, rho_g)
+
+# =========================================================================
+# PESTAÑA 2: GRADIENTE CONJUGADO (FLETCHER-REEVES)
+# =========================================================================
+with tab_conjugado:
+    st.subheader("🔧 Configuración - Gradiente Conjugado (FR)")
+    st.info("💡 **Nota Metodológica:** Este método utiliza de forma automática una búsqueda de línea bajo la condición de *Wolfe Completo sin Backtracking* fijando el Paso Inicial $\\alpha_0 = 1.0$ para preservar la conjugación de direcciones.")
+    
+    c_cg1, c_cg2 = st.columns(2)
+    with c_cg1:
+        n_vars_cg = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_cg")
+        var_names_cg = [f"x{i+1}" for i in range(n_vars_cg)]
+        default_function_cg = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_cg,3))])
+        funcion_str_cg = st.text_input("Función Objetivo", value=default_function_cg, key="func_cg")
+        st.caption(f"Variables disponibles: {', '.join(var_names_cg)}")
+        
+        default_x0_cg = ", ".join(["0"] * n_vars_cg)
+        x0_str_cg = st.text_input("Punto de Partida (x₀)", value=default_x0_cg, key="x0_cg")
+        
+    with c_cg2:
+        max_iter_cg = st.number_input("Número de Iteraciones", min_value=1, value=100, key="max_iter_cg")
+        tol_cg = st.number_input("Tolerancia de Convergencia", value=1e-6, format="%.1e", key="tol_cg")
+
+    st.markdown("#### ⚙️ Parámetros de Búsqueda de Línea (Wolfe)")
+    p_cg1, p_cg2 = st.columns(2)
+    with p_cg1:
+        c1_cg = st.number_input("Parámetro Armijo (β)", value=0.1, key="c1_cg")
+    with p_cg2:
+        c2_cg = st.number_input("Parámetro Curvatura (σ)", min_value=0.01, max_value=0.999, value=0.90, step=0.01, help="Condición de Wolfe. Valores comunes: 0.1 = muy estricto, 0.5 = moderado, 0.9 = estándar, 0.99 = muy permisivo.", key="c2_cg")
+
+    ejecutar_cg = st.button("🚀 EJECUTAR OPTIMIZACIÓN - GRADIENTE CONJUGADO", use_container_width=True, key="btn_ej_cg")
+    if ejecutar_cg:
+        resolver_y_graficar('Gradiente Conjugado (FR)', n_vars_cg, funcion_str_cg, x0_str_cg, max_iter_cg, tol_cg, 'Wolfe Completo sin Backtracking', 1.0, c1_cg, c2_cg, 0.5)
+
+# =========================================================================
+# PESTAÑA 3: MÉTODO DE NEWTON
+# =========================================================================
+with tab_newton:
+    st.subheader("🔧 Configuración - Método de Newton de Segundo Orden")
+    st.info("💡 **Nota Metodológica:** El método de Newton calcula de forma analítica la matriz Hessiana. Se autoconfigura con búsqueda de línea de *Wolfe Completo sin Backtracking* y $\\alpha_0 = 1.0$ para garantizar la tasa de convergencia cuadrática cerca del mínimo.")
+    
+    c_nw1, c_nw2 = st.columns(2)
+    with c_nw1:
+        n_vars_nw = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_nw")
+        var_names_nw = [f"x{i+1}" for i in range(n_vars_nw)]
+        default_function_nw = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_nw,3))])
+        funcion_str_nw = st.text_input("Función Objetivo", value=default_function_nw, key="func_nw")
+        st.caption(f"Variables disponibles: {', '.join(var_names_nw)}")
+        
+        default_x0_nw = ", ".join(["0"] * n_vars_nw)
+        x0_str_nw = st.text_input("Punto de Partida (x₀)", value=default_x0_nw, key="x0_nw")
+        
+    with c_nw2:
+        max_iter_nw = st.number_input("Número de Iteraciones", min_value=1, value=100, key="max_iter_nw")
+        tol_nw = st.number_input("Tolerancia de Convergencia", value=1e-6, format="%.1e", key="tol_nw")
+
+    st.markdown("#### ⚙️ Parámetros de Búsqueda de Línea (Wolfe)")
+    p_nw1, p_nw2 = st.columns(2)
+    with p_nw1:
+        c1_nw = st.number_input("Parámetro Armijo (β)", value=0.1, key="c1_nw")
+    with p_nw2:
+        c2_nw = st.number_input("Parámetro Curvatura (σ)", min_value=0.01, max_value=0.999, value=0.90, step=0.01, help="Condición de Wolfe. Valores comunes: 0.1 = muy estricto, 0.5 = moderado, 0.9 = estándar, 0.99 = muy permisivo.", key="c2_nw")
+
+    ejecutar_nw = st.button("🚀 EJECUTAR OPTIMIZACIÓN - NEWTON", use_container_width=True, key="btn_ej_nw")
+    if ejecutar_nw:
+        resolver_y_graficar('Newton', n_vars_nw, funcion_str_nw, x0_str_nw, max_iter_nw, tol_nw, 'Wolfe Completo sin Backtracking', 1.0, c1_nw, c2_nw, 0.5)
