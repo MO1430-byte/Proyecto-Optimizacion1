@@ -2,4 +2,4 @@ streamlit
 numpy
 sympy
 pandas
-plotly.graph_objects
+plotly
