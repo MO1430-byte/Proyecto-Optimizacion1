@@ -1,42 +1,198 @@
+# Commented out IPython magic to ensure Python compatibility.
+# %%writefile app.py
 import streamlit as st
 import numpy as np
 import sympy as sp
 import pandas as pd
 import plotly.graph_objects as go
-
-# =========================================================================
-# PLATAFORMA DE OPTIMIZACIÓN WEB - GRUPO VMA OPTIMA (STREAMLIT)
-# =========================================================================
  
-st.set_page_config(page_title="Plataforma de Optimización - VMA Optima", layout="wide")
+ # =========================================================================
+ # PLATAFORMA DE OPTIMIZACIÓN WEB - GRUPO VMA OPTIMA (STREAMLIT)
+ # =========================================================================
+ 
+st.markdown("""
+<style>
+
+.stApp {
+    background-color: #081c3a;
+    color: white;
+}
+
+/* Títulos */
+h1, h2, h3 {
+    color: #d4af37 !important;
+}
+
+/* Texto normal */
+p, label {
+    color: white !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background-color: #06152d;
+}
+
+/* Inputs */
+.stTextInput input,
+.stNumberInput input {
+    background-color: white !important;
+    color: black !important;
+    border: 2px solid #d4af37 !important;
+}
+
+/* Selectbox */
+.stSelectbox div[data-baseweb="select"] {
+    background-color: #10284d !important;
+    color: white !important;
+}
+
+/* Dataframe */
+[data-testid="stDataFrame"] {
+    background-color: #10284d;
+}
+
+/* Botón principal */
+.stButton button {
+    background-color: #d4af37;
+    color: #081c3a;
+    font-weight: bold;
+    border-radius: 10px;
+    border: none;
+}
+
+.stButton button:hover {
+    background-color: #f0c94a;
+}
+
+/* Métricas */
+[data-testid="metric-container"] {
+    background-color: #10284d;
+    border: 1px solid #d4af37;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+/* Selectbox cerrado y abierto - Corrección de Contraste */
+[data-baseweb="select"] span {
+    color: white !important;
+}
+
+div[data-baseweb="select"] * {
+    color: white !important;
+}
+
+/* Menú desplegable completo */
+ul[role="listbox"] {
+    background-color: #10284d !important;
+}
+
+/* Opciones dentro del menú desplegable */
+li[role="option"] {
+    color: white !important;
+    background-color: #10284d !important;
+}
+
+/* Efecto hover al pasar el mouse sobre las opciones */
+li[role="option"]:hover {
+    background-color: #d4af37 !important;
+    color: #081c3a !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
 st.title("Plataforma Web de Optimización - Grupo: VMA Optima")
  
 # --- PANEL LATERAL (DATOS DE ENTRADA) ---
 with st.sidebar:
     st.header("🔧 Datos de Entrada")
 
-    n_vars = st.number_input("Número de Variables", min_value=1, max_value=3, value=2)
-    metodo = st.selectbox("Método de Optimización", ['Gradiente', 'Gradiente Conjugado (FR)', 'Newton'])
- 
-     # Nota: Internamente el código convertirá los "^" a "**" para que funcione como MATLAB
-    funcion_str_input = st.text_input("Función Objetivo f(x,y,z)", value="2*x^2 - 4*x*y + y^4 + 5*y^2 - 10*y")
-    st.caption("Use: x, y, z (Ej: x^2 + y^2)")
+    n_vars = st.number_input(
+        "Número de Variables",
+        min_value=1,
+        max_value=50,
+        value=2,
+        step=1
+    )
 
-    x0_str = st.text_input("Punto de Partida (x_0)", value="0, 0")
+    var_names = [f"x{i+1}" for i in range(n_vars)]
+
+    metodo = st.selectbox(
+        "Método de Optimización",
+        ['Gradiente', 'Gradiente Conjugado (FR)', 'Newton']
+    )
+     # Nota: Internamente el código convertirá los "^" a "**" para que funcione como MATLAB
+    default_function = " + ".join(
+    [f"x{i+1}^2" for i in range(min(n_vars,3))]
+    )
+    
+    funcion_str_input = st.text_input(
+        "Función Objetivo",
+        value=default_function
+    )
+    
+    st.caption(
+        f"Variables disponibles: {', '.join(var_names)}"
+    )
+
+    default_x0 = ", ".join(["0"] * n_vars)
+
+    x0_str = st.text_input(
+        "Punto de Partida (x₀)",
+        value=default_x0
+    )
     max_iter = st.number_input("Número de Iteraciones", min_value=1, value=100)
     tol = st.number_input("Tolerancia de Convergencia", value=1e-6, format="%.1e")
  
-    st.markdown("### Parámetros de Búsqueda")
-    alpha_0 = st.number_input("Paso Inicial Alpha (α)", value=1.0)
-    tipo_busqueda = st.selectbox("Criterio de Búsqueda", ['Solo Armijo', 'Wolfe Completo', 'Wolfe Completo sin Backtracking'])
- 
-    c1 = st.number_input("Parámetro Armijo (β)", value=0.1)
+    st.markdown("### ⚙️ Parámetros de Búsqueda")
+    
+    # --- MENÚ DINÁMICO ADAPTATIVO SEGÚN EL MÉTODO ---
+    if metodo == 'Gradiente':
+        tipo_busqueda = st.selectbox(
+            "Criterio de Búsqueda", 
+            ['Solo Armijo', 'Wolfe Completo', 'Wolfe Completo sin Backtracking']
+        )
+        alpha_0 = st.number_input("Paso Inicial Alpha (α)", value=1.0)
+        c1 = st.number_input("Parámetro Armijo (β)", value=0.1)
 
-    disabled_c2 = (tipo_busqueda == 'Solo Armijo')
-    c2 = st.number_input("Parámetro Curvatura (σ)", value=0.9, disabled=disabled_c2)
+        # Mostrar parámetro Curvatura (c2) solo si es Wolfe
+        if tipo_busqueda in ['Wolfe Completo', 'Wolfe Completo sin Backtracking']:
+            c2 = st.number_input(
+                "Parámetro Curvatura (σ)",
+                min_value=0.01,
+                max_value=0.999,
+                value=0.90,
+                step=0.01,
+                help="Condición de Wolfe. Valores comunes: 0.1 (estricto), 0.9 (estándar)."
+            )
+        else:
+            c2 = 0.90
 
-    disabled_rho = (tipo_busqueda == 'Wolfe Completo sin Backtracking')
-    rho = st.number_input("Contracción Backtracking (ρ)", value=0.5, disabled=disabled_rho)
+        # Mostrar parámetro Contracción (rho) solo si incluye Backtracking
+        if tipo_busqueda != 'Wolfe Completo sin Backtracking':
+            rho = st.number_input("Contracción Backtracking (ρ)", value=0.5)
+        else:
+            rho = 0.5
+
+    else:
+        # Interfaz simplificada para Newton y Gradiente Conjugado
+        st.info(f"💡 **Nota:** El método **{metodo}** utiliza una búsqueda de línea de *Wolfe Completo sin Backtracking* con $\\alpha_0 = 1.0$ fijado de manera automática.")
+        
+        # Parámetros lógicos internos ocultos al usuario pero asignados para el algoritmo
+        tipo_busqueda = 'Wolfe Completo sin Backtracking'
+        alpha_0 = 1.0
+        rho = 0.5
+        
+        # Únicos parámetros necesarios de ingresar para estos métodos
+        c1 = st.number_input("Parámetro Armijo (β)", value=0.1)
+        c2 = st.number_input(
+            "Parámetro Curvatura (σ)",
+            min_value=0.01,
+            max_value=0.999,
+            value=0.90,
+            step=0.01,
+            help="Condición de Wolfe estándar."
+        )
 
     ejecutar = st.button("🚀 EJECUTAR OPTIMIZACIÓN", use_container_width=True, type="primary")
 
@@ -51,19 +207,27 @@ if ejecutar:
             st.error(f"El punto de partida debe tener {n_vars} valores separados por comas.")
             st.stop()
         xk = np.array(x_vals, dtype=float)
-
-        vars_sym = sp.symbols('x y z')[:n_vars]
+        vars_sym = tuple(
+            sp.symbols(" ".join(var_names))
+            if n_vars > 1
+            else [sp.Symbol("x1")]
+        )
         f_sym = sp.sympify(funcion_str)
         grad_sym = [sp.diff(f_sym, var) for var in vars_sym]
         hess_sym = [[sp.diff(g, var) for var in vars_sym] for g in grad_sym]
 
-        f_num = sp.lambdify([vars_sym], f_sym, "numpy")
-        grad_num = sp.lambdify([vars_sym], grad_sym, "numpy")
-        hess_num = sp.lambdify([vars_sym], hess_sym, "numpy")
-
-        def f(v): return float(f_num(list(v)))
-        def grad(v): return np.array(grad_num(list(v)), dtype=float)
-        def hess(v): return np.array(hess_num(list(v)), dtype=float)
+        f_num = sp.lambdify(vars_sym, f_sym, "numpy")
+        grad_num = sp.lambdify(vars_sym, grad_sym, "numpy")
+        hess_num = sp.lambdify(vars_sym, hess_sym, "numpy")
+        
+        def f(v):
+            return float(f_num(*v))
+        
+        def grad(v):
+            return np.array(grad_num(*v), dtype=float)
+        
+        def hess(v):
+            return np.array(hess_num(*v), dtype=float)
 
         history = [xk.copy()]
         f_history = [f(xk)]
@@ -72,7 +236,7 @@ if ejecutar:
         dk_old = None
         g_old = None
 
-        # Bloqueo lógico interno
+        # Sincronización lógica interna redundante de seguridad
         if metodo != 'Gradiente':
             tipo_busqueda = 'Wolfe Completo sin Backtracking'
             alpha_0 = 1.0
@@ -89,6 +253,7 @@ if ejecutar:
                 dk = -g
             elif metodo == 'Newton':
                 H = hess(xk)
+                H = np.atleast_2d(H)
                 if np.linalg.cond(H) > 1e10 or np.isnan(H).any():
                     H += 1e-2 * np.eye(n_vars)
                 try:
@@ -194,8 +359,7 @@ if ejecutar:
                 height=450
             )
 
-            # AQUÍ ACTIVAMOS EL ZOOM PARA EL GRÁFICO DE CONVERGENCIA
-            st.plotly_chart(fig_err, use_container_width=True, config={'scrollZoom': True})
+            st.plotly_chart(fig_err, use_container_width=True)
 
         with g_col2:
             st.subheader("🗺️ Trayectoria Realizada")
@@ -207,10 +371,10 @@ if ejecutar:
 
                 mx = max(abs(max(x_pts)-min(x_pts))*0.6, 2.0)
                 my = max(abs(max(y_pts)-min(y_pts))*0.6, 2.0)
-                
+               
                 x_grid = np.linspace(min(x_pts)-mx, max(x_pts)+mx, 80)
                 y_grid = np.linspace(min(y_pts)-my, max(y_pts)+my, 80)
-                
+               
                 X, Y = np.meshgrid(x_grid, y_grid)
                 
                 Z = np.zeros_like(X)
@@ -218,7 +382,7 @@ if ejecutar:
                 for r in range(X.shape[0]):
                     for c in range(X.shape[1]):
                         Z[r,c] = f([X[r,c], Y[r,c]])
-                      
+                     
                 fig_traj = go.Figure()
 
                 # Curvas de nivel
@@ -275,8 +439,7 @@ if ejecutar:
                     height=500
                 )
 
-                # AQUÍ ACTIVAMOS EL ZOOM PARA EL GRÁFICO 2D
-                st.plotly_chart(fig_traj, use_container_width=True, config={'scrollZoom': True})
+                st.plotly_chart(fig_traj, use_container_width=True)
             elif n_vars == 1:
 
                 history_np = np.array(history).flatten()
@@ -321,8 +484,7 @@ if ejecutar:
                     height=500
                 )
             
-                # AQUÍ ACTIVAMOS EL ZOOM PARA EL GRÁFICO 1D
-                st.plotly_chart(fig_1d, use_container_width=True, config={'scrollZoom': True})
+                st.plotly_chart(fig_1d, use_container_width=True)
             
             else:
                 st.info("La visualización gráfica solo está disponible para 1 o 2 variables.")
