@@ -33,12 +33,21 @@ p, label {
     background-color: #06152d;
 }
 
-/* Inputs */
+/* Inputs (Cajas de texto y números) - Corregido para legibilidad total al escribir */
 .stTextInput input,
 .stNumberInput input {
-    background-color: white !important;
-    color: black !important;
+    background-color: #10284d !important;
+    color: white !important;
     border: 2px solid #d4af37 !important;
+    border-radius: 8px;
+}
+
+/* Forzar que el texto y fondo se mantengan legibles al hacer clic o escribir (Focus) */
+.stTextInput input:focus,
+.stNumberInput input:focus {
+    background-color: #10284d !important;
+    color: white !important;
+    border: 2px solid #f0c94a !important;
 }
 
 /* Selectbox */
@@ -163,7 +172,7 @@ with st.sidebar:
                 max_value=0.999,
                 value=0.90,
                 step=0.01,
-                help="Condición de Wolfe. Valores comunes: 0.1 (estricto), 0.9 (estándar)."
+                help="Condición de Wolfe. Valores comunes: 0.1 = muy estricto, 0.5 = moderado, 0.9 = estándar, 0.99 = muy permisivo."
             )
         else:
             c2 = 0.90
@@ -191,7 +200,7 @@ with st.sidebar:
             max_value=0.999,
             value=0.90,
             step=0.01,
-            help="Condición de Wolfe estándar."
+            help="Condición de Wolfe. Valores comunes: 0.1 = muy estricto, 0.5 = moderado, 0.9 = estándar, 0.99 = muy permisivo."
         )
 
     ejecutar = st.button("🚀 EJECUTAR OPTIMIZACIÓN", use_container_width=True, type="primary")
