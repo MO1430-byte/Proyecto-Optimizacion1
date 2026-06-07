@@ -326,7 +326,7 @@ tab_gradiente, tab_conjugado, tab_newton = st.tabs([
 ])
 
 # =========================================================================
-# PESTAÑA 1: MÉ কুল MÉTODO DEL GRADIENTE
+# PESTAÑA 1: MÉTODO DEL GRADIENTE
 # =========================================================================
 with tab_gradiente:
     st.subheader("🔧 Configuración - Descenso de Gradiente Estándar")
@@ -335,9 +335,10 @@ with tab_gradiente:
     with c_grad1:
         n_vars_g = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_g")
         var_names_g = [f"x{i+1}" for i in range(n_vars_g)]
+        ejemplo_g = " + ".join([f"x{i+1}^2" for i in range(n_vars_g)])
         default_function_g = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_g,3))])
         funcion_str_g = st.text_input("Función Objetivo", value=default_function_g, key="func_g")
-        st.caption(f"Escribir variables como {', '.join(var_names_g)}  \nEjemplo: x1^2 + x2^2")
+        st.caption(f"Escribir variables como {', '.join(var_names_g)}  \nEjemplo: {ejemplo_g}")
         
         default_x0_g = ", ".join(["0"] * n_vars_g)
         x0_str_g = st.text_input("Punto de Partida (x₀)", value=default_x0_g, key="x0_g")
@@ -381,9 +382,10 @@ with tab_conjugado:
     with c_cg1:
         n_vars_cg = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_cg")
         var_names_cg = [f"x{i+1}" for i in range(n_vars_cg)]
+        ejemplo_cg = " + ".join([f"x{i+1}^2" for i in range(n_vars_cg)])
         default_function_cg = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_cg,3))])
         funcion_str_cg = st.text_input("Función Objetivo", value=default_function_cg, key="func_cg")
-        st.caption(f"Escribir variables como {', '.join(var_names_cg)}  \nEjemplo: x1^2 + x2^2")
+        st.caption(f"Escribir variables como {', '.join(var_names_cg)}  \nEjemplo: {ejemplo_cg}")
         
         default_x0_cg = ", ".join(["0"] * n_vars_cg)
         x0_str_cg = st.text_input("Punto de Partida (x₀)", value=default_x0_cg, key="x0_cg")
@@ -414,9 +416,10 @@ with tab_newton:
     with c_nw1:
         n_vars_nw = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_nw")
         var_names_nw = [f"x{i+1}" for i in range(n_vars_nw)]
+        ejemplo_nw = " + ".join([f"x{i+1}^2" for i in range(n_vars_nw)])
         default_function_nw = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_nw,3))])
         funcion_str_nw = st.text_input("Función Objetivo", value=default_function_nw, key="func_nw")
-        st.caption(f"Escribir variables como {', '.join(var_names_nw)}  \nEjemplo: x1^2 + x2^2")
+        st.caption(f"Escribir variables como {', '.join(var_names_nw)}  \nEjemplo: {ejemplo_nw}")
         
         default_x0_nw = ", ".join(["0"] * n_vars_nw)
         x0_str_nw = st.text_input("Punto de Partida (x₀)", value=default_x0_nw, key="x0_nw")
