@@ -339,7 +339,8 @@ with tab_gradiente:
         var_names_g = [f"x{i+1}" for i in range(n_vars_g)]
         default_function_g = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_g,3))])
         funcion_str_g = st.text_input("Función Objetivo", value=default_function_g, key="func_g")
-        st.caption(f"Variables disponibles: {', '.join(var_names_g)}")
+        st.caption(f"Escribir variables como {', '.join(var_names_g)}  
+Ejemplo: x1^2 + x2^2")
         
         default_x0_g = ", ".join(["0"] * n_vars_g)
         x0_str_g = st.text_input("Punto de Partida (x₀)", value=default_x0_g, key="x0_g")
