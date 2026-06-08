@@ -4,9 +4,7 @@ import sympy as sp
 import pandas as pd
 import plotly.graph_objects as go
  
- # =========================================================================
  # PLATAFORMA DE OPTIMIZACIÓN WEB - GRUPO VMA OPTIMA (STREAMLIT)
- # =========================================================================
 
 # Configuración de página en modo ancho para aprovechar la pantalla completa
 st.set_page_config(layout="wide")
@@ -146,7 +144,7 @@ li[role="option"]:hover {
 st.title("Plataforma Web de Optimización - Grupo: VMA Optima")
 st.markdown("Selecciona el método de optimización mediante los botones superiores para configurar sus parámetros correspondientes:")
 
-# --- FUNCIÓN CENTRALIZADA DE CÓMPUTO Y RESOLUCIÓN MATEMÁTICA ---
+# FUNCIÓN CENTRALIZADA DE CÓMPUTO Y RESOLUCIÓN MATEMÁTICA
 def resolver_y_graficar(metodo, n_vars, funcion_str_input, x0_str, max_iter, tol, tipo_busqueda, alpha_0, c1, c2, rho):
     try:
         # Pre-procesamiento sintaxis MATLAB
@@ -250,14 +248,14 @@ def resolver_y_graficar(metodo, n_vars, funcion_str_input, x0_str, max_iter, tol
 
         st.success(f"**Criterio de Parada Alcanzado:** {status}")
 
-        # --- RESUMEN FINAL ---
+        # RESUMEN FINAL
         st.subheader("📊 Resumen Final")
         col1, col2, col3 = st.columns(3)
         col1.metric("Punto Mínimo Encontrado (x*)", str(np.round(xk, 5)))
         col2.metric("Valor de la Función f(x*)", f"{f(xk):.8f}")
         col3.metric("Iteraciones Realizadas", str(k if err >= tol else k-1))
 
-        # --- TABLA HISTORIAL ---
+        # TABLA HISTORIAL
         st.subheader("📝 Historial Detallado (Paso a Paso)")
         df_hist = pd.DataFrame({
             "Iteración (k)": range(len(history)),
@@ -266,9 +264,18 @@ def resolver_y_graficar(metodo, n_vars, funcion_str_input, x0_str, max_iter, tol
             "Error ||∇f||": [f"{ev:.6e}" for ev in err_history]
         })
         st.dataframe(df_hist, use_container_width=True)
+        
+        # VALOR AGREGADO: DESCARGAR HISTORIAL CSV
+        csv = df_hist.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="💾 Descargar Historial Completo (CSV)",
+            data=csv,
+            file_name=f'historial_{metodo.lower().replace(" ", "_")}.csv',
+            mime='text/csv',
+        )
         st.divider()
 
-        # --- GRÁFICOS ---
+        #GRÁFICOS
         g_col1, g_col2 = st.columns(2)
         with g_col1:
             st.subheader("📉 Gráfico de Convergencia")
@@ -318,30 +325,46 @@ def resolver_y_graficar(metodo, n_vars, funcion_str_input, x0_str, max_iter, tol
     except Exception as e:
         st.error(f"❌ Ocurrió un error matemático o de sintaxis: {str(e)}")
 
-# --- CREACIÓN DE LOS TRES GRANDES BOTONES DE PESTAÑA ---
+# CREACIÓN DE LOS TRES GRANDES BOTONES DE PESTAÑA
 tab_gradiente, tab_conjugado, tab_newton = st.tabs([
     "📈 Método del Gradiente", 
     "🚀 Gradiente Conjugado (FR)", 
     "🧮 Método de Newton"
 ])
 
-# =========================================================================
 # PESTAÑA 1: MÉTODO DEL GRADIENTE
-# =========================================================================
 with tab_gradiente:
     st.subheader("🔧 Configuración - Descenso de Gradiente Estándar")
     
+    benchmark_g = st.selectbox("🧪 Cargar Función de Prueba Clásica (Benchmark)", ["Ninguna (Personalizada)", "Función Esfera (Convexa, Fácil)", "Función de Rosenbrock (Valle, Desafiante)"], key="bench_g")
+    
     c_grad1, c_grad2 = st.columns(2)
     with c_grad1:
-        n_vars_g = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_g")
-        var_names_g = [f"x{i+1}" for i in range(n_vars_g)]
-        ejemplo_g = " + ".join([f"x{i+1}^2" for i in range(n_vars_g)])
-        default_function_g = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_g,3))])
-        funcion_str_g = st.text_input("Función Objetivo", value=default_function_g, key="func_g")
-        st.caption(f"Escribir variables como {', '.join(var_names_g)}  \nEjemplo: {ejemplo_g}")
+        if benchmark_g != "Ninguna (Personalizada)":
+            n_vars_g = 2
+            st.markdown(f"**Número de Variables:** {n_vars_g} *(Fijo por Benchmark)*")
+            if benchmark_g == "Función Esfera (Convexa, Fácil)":
+                default_function_g = "x1^2 + x2^2"
+                default_x0_g = "5.0, 5.0"
+                st.info("ℹ️ Mínimo global teórico en: **x* = (0, 0)**")
+            else:
+                default_function_g = "(1 - x1)^2 + 100*(x2 - x1^2)^2"
+                default_x0_g = "-1.2, 1.0"
+                st.info("ℹ️ Mínimo global teórico en: **x* = (1, 1)**")
+            var_names_g = ["x1", "x2"]
+        else:
+            n_vars_g = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_g")
+            var_names_g = [f"x{i+1}" for i in range(n_vars_g)]
+            default_function_g = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_g,3))])
+            default_x0_g = ", ".join(["0"] * n_vars_g)
+            
+        funcion_str_g = st.text_input("Función Objetivo", value=default_function_g, key=f"func_g_{benchmark_g}")
         
-        default_x0_g = ", ".join(["0"] * n_vars_g)
-        x0_str_g = st.text_input("Punto de Partida (x₀)", value=default_x0_g, key="x0_g")
+        if benchmark_g == "Ninguna (Personalizada)":
+            ejemplo_g = " + ".join([f"x{i+1}^2" for i in range(n_vars_g)])
+            st.caption(f"Escribir variables como {', '.join(var_names_g)}  \nEjemplo: {ejemplo_g}")
+            
+        x0_str_g = st.text_input("Punto de Partida (x₀)", value=default_x0_g, key=f"x0_g_{benchmark_g}")
         
     with c_grad2:
         max_iter_g = st.number_input("Número de Iteraciones", min_value=1, value=100, key="max_iter_g")
@@ -355,13 +378,10 @@ with tab_gradiente:
     with p_grad2:
         c1_g = st.number_input("Parámetro Armijo (β)", value=0.1, key="c1_g")
     with p_grad3:
-        # Lógica condicional adaptativa para Curvatura (σ)
         if tipo_busqueda_g in ['Wolfe Completo', 'Wolfe Completo sin Backtracking']:
             c2_g = st.number_input("Parámetro Curvatura (σ)", min_value=0.01, max_value=0.999, value=0.90, step=0.01, help="Condición de Wolfe. Valores comunes: 0.1 = muy estricto, 0.5 = moderado, 0.9 = estándar, 0.99 = muy permisivo.", key="c2_g")
         else:
             c2_g = 0.90
-            
-        # Lógica condicional adaptativa para Contracción (ρ)
         if tipo_busqueda_g != 'Wolfe Completo sin Backtracking':
             rho_g = st.number_input("Contracción Backtracking (ρ)", value=0.5, key="rho_g")
         else:
@@ -371,24 +391,41 @@ with tab_gradiente:
     if ejecutar_g:
         resolver_y_graficar('Gradiente', n_vars_g, funcion_str_g, x0_str_g, max_iter_g, tol_g, tipo_busqueda_g, alpha_0_g, c1_g, c2_g, rho_g)
 
-# =========================================================================
 # PESTAÑA 2: GRADIENTE CONJUGADO (FLETCHER-REEVES)
-# =========================================================================
+
 with tab_conjugado:
     st.subheader("🔧 Configuración - Gradiente Conjugado (FR)")
     st.info("💡 **Nota Metodológica:** Este método utiliza de forma automática una búsqueda de línea bajo la condición de *Wolfe Completo sin Backtracking* fijando el Paso Inicial $\\alpha_0 = 1.0$ para preservar la conjugación de direcciones.")
     
+    benchmark_cg = st.selectbox("🧪 Cargar Función de Prueba Clásica (Benchmark)", ["Ninguna (Personalizada)", "Función Esfera (Convexa, Fácil)", "Función de Rosenbrock (Valle, Desafiante)"], key="bench_cg")
+    
     c_cg1, c_cg2 = st.columns(2)
     with c_cg1:
-        n_vars_cg = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_cg")
-        var_names_cg = [f"x{i+1}" for i in range(n_vars_cg)]
-        ejemplo_cg = " + ".join([f"x{i+1}^2" for i in range(n_vars_cg)])
-        default_function_cg = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_cg,3))])
-        funcion_str_cg = st.text_input("Función Objetivo", value=default_function_cg, key="func_cg")
-        st.caption(f"Escribir variables como {', '.join(var_names_cg)}  \nEjemplo: {ejemplo_cg}")
+        if benchmark_cg != "Ninguna (Personalizada)":
+            n_vars_cg = 2
+            st.markdown(f"**Número de Variables:** {n_vars_cg} *(Fijo por Benchmark)*")
+            if benchmark_cg == "Función Esfera (Convexa, Fácil)":
+                default_function_cg = "x1^2 + x2^2"
+                default_x0_cg = "5.0, 5.0"
+                st.info("ℹ️ Mínimo global teórico en: **x* = (0, 0)**")
+            else:
+                default_function_cg = "(1 - x1)^2 + 100*(x2 - x1^2)^2"
+                default_x0_cg = "-1.2, 1.0"
+                st.info("ℹ️ Mínimo global teórico en: **x* = (1, 1)**")
+            var_names_cg = ["x1", "x2"]
+        else:
+            n_vars_cg = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_cg")
+            var_names_cg = [f"x{i+1}" for i in range(n_vars_cg)]
+            default_function_cg = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_cg,3))])
+            default_x0_cg = ", ".join(["0"] * n_vars_cg)
+            
+        funcion_str_cg = st.text_input("Función Objetivo", value=default_function_cg, key=f"func_cg_{benchmark_cg}")
         
-        default_x0_cg = ", ".join(["0"] * n_vars_cg)
-        x0_str_cg = st.text_input("Punto de Partida (x₀)", value=default_x0_cg, key="x0_cg")
+        if benchmark_cg == "Ninguna (Personalizada)":
+            ejemplo_cg = " + ".join([f"x{i+1}^2" for i in range(n_vars_cg)])
+            st.caption(f"Escribir variables como {', '.join(var_names_cg)}  \nEjemplo: {ejemplo_cg}")
+            
+        x0_str_cg = st.text_input("Punto de Partida (x₀)", value=default_x0_cg, key=f"x0_cg_{benchmark_cg}")
         
     with c_cg2:
         max_iter_cg = st.number_input("Número de Iteraciones", min_value=1, value=100, key="max_iter_cg")
@@ -405,24 +442,41 @@ with tab_conjugado:
     if ejecutar_cg:
         resolver_y_graficar('Gradiente Conjugado (FR)', n_vars_cg, funcion_str_cg, x0_str_cg, max_iter_cg, tol_cg, 'Wolfe Completo sin Backtracking', 1.0, c1_cg, c2_cg, 0.5)
 
-# =========================================================================
 # PESTAÑA 3: MÉTODO DE NEWTON
-# =========================================================================
+
 with tab_newton:
     st.subheader("🔧 Configuración - Método de Newton de Segundo Orden")
     st.info("💡 **Nota Metodológica:** El método de Newton calcula de forma analítica la matriz Hessiana. Se autoconfigura con búsqueda de línea de *Wolfe Completo sin Backtracking* y $\\alpha_0 = 1.0$ para garantizar la tasa de convergencia cuadrática cerca del mínimo.")
     
+    benchmark_nw = st.selectbox("🧪 Cargar Función de Prueba Clásica (Benchmark)", ["Ninguna (Personalizada)", "Función Esfera (Convexa, Fácil)", "Función de Rosenbrock (Valle, Desafiante)"], key="bench_nw")
+    
     c_nw1, c_nw2 = st.columns(2)
     with c_nw1:
-        n_vars_nw = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_nw")
-        var_names_nw = [f"x{i+1}" for i in range(n_vars_nw)]
-        ejemplo_nw = " + ".join([f"x{i+1}^2" for i in range(n_vars_nw)])
-        default_function_nw = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_nw,3))])
-        funcion_str_nw = st.text_input("Función Objetivo", value=default_function_nw, key="func_nw")
-        st.caption(f"Escribir variables como {', '.join(var_names_nw)}  \nEjemplo: {ejemplo_nw}")
+        if benchmark_nw != "Ninguna (Personalizada)":
+            n_vars_nw = 2
+            st.markdown(f"**Número de Variables:** {n_vars_nw} *(Fijo por Benchmark)*")
+            if benchmark_nw == "Función Esfera (Convexa, Fácil)":
+                default_function_nw = "x1^2 + x2^2"
+                default_x0_nw = "5.0, 5.0"
+                st.info("ℹ️ Mínimo global teórico en: **x* = (0, 0)**")
+            else:
+                default_function_nw = "(1 - x1)^2 + 100*(x2 - x1^2)^2"
+                default_x0_nw = "-1.2, 1.0"
+                st.info("ℹ️ Mínimo global teórico en: **x* = (1, 1)**")
+            var_names_nw = ["x1", "x2"]
+        else:
+            n_vars_nw = st.number_input("Número de Variables", min_value=1, max_value=50, value=2, step=1, key="n_vars_nw")
+            var_names_nw = [f"x{i+1}" for i in range(n_vars_nw)]
+            default_function_nw = " + ".join([f"x{i+1}^2" for i in range(min(n_vars_nw,3))])
+            default_x0_nw = ", ".join(["0"] * n_vars_nw)
+            
+        funcion_str_nw = st.text_input("Función Objetivo", value=default_function_nw, key=f"func_nw_{benchmark_nw}")
         
-        default_x0_nw = ", ".join(["0"] * n_vars_nw)
-        x0_str_nw = st.text_input("Punto de Partida (x₀)", value=default_x0_nw, key="x0_nw")
+        if benchmark_nw == "Ninguna (Personalizada)":
+            ejemplo_nw = " + ".join([f"x{i+1}^2" for i in range(n_vars_nw)])
+            st.caption(f"Escribir variables como {', '.join(var_names_nw)}  \nEjemplo: {ejemplo_nw}")
+            
+        x0_str_nw = st.text_input("Punto de Partida (x₀)", value=default_x0_nw, key=f"x0_nw_{benchmark_nw}")
         
     with c_nw2:
         max_iter_nw = st.number_input("Número de Iteraciones", min_value=1, value=100, key="max_iter_nw")
